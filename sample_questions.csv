@@ -1,0 +1,11 @@
+Question,Option A,Option B,Option C,Option D,Answer,Type
+What does HTML stand for?,Hyper Text Markup Language,Hyperlinks and Text Markup Language,Home Tool Markup Language,Hyper Tool Multi Language,A,radio
+Which of the following are valid CSS frameworks?,Tailwind CSS,React,Bootstrap,Angular,A,C,checkbox
+Inside which HTML element do we put the JavaScript?,<js>,<scripting>,<script>,<javascript>,C,radio
+Who is making the Web standards?,Mozilla,Microsoft,The World Wide Web Consortium,Google,C,radio
+Choose the correct HTML element for the largest heading:,<h6>,<h1>,<heading>,<head>,B,radio
+What is the correct syntax for referring to an external script called "xxx.js"?,<script name="xxx.js">,<script href="xxx.js">,<script src="xxx.js">,<script src="xxx.js" />,C,radio
+How do you write "Hello World" in an alert box?,msgBox("Hello World");,alert("Hello World");,msg("Hello World");,alertBox("Hello World");,B,radio
+Which of the following are JavaScript data types?,String,Number,Boolean,All of the above,A,B,C,checkbox
+How do you create a function in JavaScript?,function:myFunction(),function myFunction(),function = myFunction(),create myFunction(),B,radio
+How to write an IF statement in JavaScript?,if i = 5 then,if i == 5 then,if (i == 5),if i = 5,C,radio

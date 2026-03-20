@@ -14,20 +14,20 @@ export default async function TakeTestPage({
   // 1. Fetch Session
   const { data: session, error: sessionErr } = await supabase
     .from('test_sessions')
-    .select('id, test_id, started_at, completed_at')
+    .select('id, test_id, started_at, finished_at')
     .eq('id', sessionId)
     .single()
 
   if (sessionErr || !session) notFound()
   if (session.test_id !== testId) notFound()
-  if (session.completed_at) {
+  if (session.finished_at) {
     redirect(`/results/${sessionId}`)
   }
 
   // 2. Fetch Test details (for time limit)
   const { data: test, error: testErr } = await supabase
     .from('tests')
-    .select('time_limit')
+    .select('time_limit_minutes')
     .eq('id', testId)
     .single()
 
@@ -38,10 +38,10 @@ export default async function TakeTestPage({
     .from('session_answers')
     .select(`
       question_id,
-      selected_options,
+      selected_option_ids,
       questions (
-        id, text, type,
-        options ( label, text )
+        id, question_text, type,
+        options ( label, option_text )
       )
     `)
     .eq('session_id', sessionId)
@@ -50,36 +50,38 @@ export default async function TakeTestPage({
     return <div>Error loading questions for this session.</div>
   }
 
-  // Re-map questions
+  type QuestionDef = {
+    id: string
+    question_text: string
+    type: 'radio' | 'checkbox'
+    options: { label: string; option_text: string }[]
+  }
+
+  // Re-map questions, stripping is_correct for client security
   const questionsList = sessionAnswers.map(sa => {
-    const qdef = sa.questions as any
-    // remove is_correct flags inside the client rendering payload for security
-    const sanitizedOptions = qdef.options.map((opt: any) => ({
-      label: opt.label,
-      text: opt.text
-    }))
+    const qdef = sa.questions as unknown as QuestionDef
     return {
       id: qdef.id,
-      text: qdef.text,
+      text: qdef.question_text,
       type: qdef.type,
-      options: sanitizedOptions
+      options: qdef.options.map(opt => ({ label: opt.label, text: opt.option_text }))
     }
   })
 
-  // Pre-load answers
+  // Pre-load any saved answers
   const initialAnswers: Record<string, string[]> = {}
   sessionAnswers.forEach(sa => {
-    if (sa.selected_options && sa.selected_options.length > 0) {
-      initialAnswers[sa.question_id] = sa.selected_options
+    if (sa.selected_option_ids && sa.selected_option_ids.length > 0) {
+      initialAnswers[sa.question_id] = sa.selected_option_ids
     }
   })
 
   return (
     <div className="bg-gray-50 min-h-screen py-8">
-      <TestTaker 
+      <TestTaker
         testId={testId}
         sessionId={sessionId}
-        timeLimit={test.time_limit}
+        timeLimit={test.time_limit_minutes}
         startedAt={session.started_at}
         questions={questionsList}
         initialAnswers={initialAnswers}

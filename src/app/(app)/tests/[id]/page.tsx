@@ -16,7 +16,7 @@ export default async function TestDetailsPage({
   const { data: test, error } = await supabase
     .from('tests')
     .select(`
-      id, title, time_limit, created_at,
+      id, title, time_limit_minutes, created_at,
       profiles ( email ),
       questions ( count )
     `)
@@ -28,9 +28,9 @@ export default async function TestDetailsPage({
   }
 
   const profiles = test.profiles as unknown as { email: string }
-  const questionsList = test.questions as unknown as any[]
-  // Typecasting the count response
-  const questionCount = questionsList?.[0]?.count || questionsList?.length || 0
+  // Supabase count aggregate returns [{ count: N }]
+  const questionsList = test.questions as unknown as { count: number }[]
+  const questionCount = questionsList?.[0]?.count ?? 0
 
   return (
     <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -45,12 +45,12 @@ export default async function TestDetailsPage({
         <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
           <div className="sm:col-span-1">
             <dt className="text-sm font-medium text-gray-500">Time Limit</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">{test.time_limit} Minutes</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{test.time_limit_minutes} Minutes</dd>
           </div>
           <div className="sm:col-span-1">
             <dt className="text-sm font-medium text-gray-500">Total Questions Pool</dt>
             <dd className="mt-1 text-lg font-semibold text-gray-900">
-              {Array.isArray(test.questions) ? test.questions.length : questionCount} Questions
+              {questionCount} Questions
             </dd>
           </div>
           <div className="sm:col-span-2 mt-4 rounded-md bg-indigo-50 p-4">

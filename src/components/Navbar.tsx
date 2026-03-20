@@ -3,8 +3,6 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
 export default async function Navbar() {
-  const supabase = await createClient()
-
   async function signOut() {
     'use server'
     const supabase = await createClient()
@@ -12,6 +10,7 @@ export default async function Navbar() {
     redirect('/')
   }
 
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   return (

@@ -32,17 +32,17 @@ export default function CreateTestPage() {
       } else {
         setErrorMsg('Unsupported file format. Please upload a .csv or .xlsx file.')
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Error parsing file. Ensure it follows the required format.')
     }
   }
 
-  const parseRow = (row: any): ParsedQuestion | null => {
+  const parseRow = (row: Record<string, unknown>): ParsedQuestion | null => {
     // Normalize keys to allow for slight variations
     const normalizeKey = (key: string) => key.toLowerCase().replace(/[\s_]+/g, '')
-    const normalizedRow: any = {}
+    const normalizedRow: Record<string, unknown> = {}
     for (const key in row) {
-      if (row.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(row, key)) {
         normalizedRow[normalizeKey(key)] = row[key]
       }
     }
@@ -53,7 +53,7 @@ export default function CreateTestPage() {
     const optionC = normalizedRow['optionc'] || normalizedRow['option3']
     const optionD = normalizedRow['optiond'] || normalizedRow['option4']
     const answer = normalizedRow['answer'] || normalizedRow['correctanswer']
-    
+
     if (!question || !optionA || !optionB || !answer) {
       return null
     }
@@ -61,9 +61,9 @@ export default function CreateTestPage() {
     let typeStr = String(normalizedRow['type'] || normalizedRow['ismultioption'] || 'radio').trim().toLowerCase()
     if (typeStr === 'y' || typeStr === 'yes') typeStr = 'checkbox' // Map 'Y' to checkbox
     const questionType = typeStr === 'checkbox' ? 'checkbox' : 'radio'
-    
+
     // Handle answers: parse commas or semicolons, map "1" -> "A", "2" -> "B", etc.
-    let answerStr = String(answer).replace(/;/g, ',')
+    const answerStr = String(answer).replace(/;/g, ',')
     const correctAnswers = answerStr.toUpperCase().split(',').map((s: string) => {
       const v = s.trim()
       if (v === '1') return 'A'
@@ -99,8 +99,8 @@ export default function CreateTestPage() {
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         const parsedData: ParsedQuestion[] = []
-        results.data.forEach((row: any) => {
-          const q = parseRow(row)
+        results.data.forEach((row) => {
+          const q = parseRow(row as Record<string, unknown>)
           if (q) parsedData.push(q)
         })
         if (parsedData.length === 0) {
@@ -123,8 +123,8 @@ export default function CreateTestPage() {
       const json = XLSX.utils.sheet_to_json(worksheet)
       
       const parsedData: ParsedQuestion[] = []
-      json.forEach((row: any) => {
-        const q = parseRow(row)
+      json.forEach((row) => {
+        const q = parseRow(row as Record<string, unknown>)
         if (q) parsedData.push(q)
       })
       if (parsedData.length === 0) {
@@ -133,7 +133,7 @@ export default function CreateTestPage() {
         setErrorMsg('')
       }
       setPreview(parsedData)
-    } catch (e) {
+    } catch {
       setErrorMsg('Failed to parse Excel file')
     }
   }

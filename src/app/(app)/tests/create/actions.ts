@@ -23,7 +23,7 @@ export async function createTestAction(
   // Insert test
   const { data: test, error: testError } = await supabase
     .from('tests')
-    .insert({ title, time_limit: timeLimit, created_by: user.id })
+    .insert({ title, time_limit_minutes: timeLimit, created_by: user.id })
     .select('id')
     .single()
 
@@ -36,7 +36,7 @@ export async function createTestAction(
     for (const q of parsedQuestions) {
       const { data: newQ, error: qError } = await supabase
         .from('questions')
-        .insert({ test_id: test.id, text: q.text, type: q.type })
+        .insert({ test_id: test.id, question_text: q.text, type: q.type })
         .select('id')
         .single()
 
@@ -45,7 +45,7 @@ export async function createTestAction(
       const optionsToInsert = q.options.map(opt => ({
         question_id: newQ.id,
         label: opt.label,
-        text: opt.text,
+        option_text: opt.text,
         is_correct: opt.isCorrect
       }))
 
@@ -54,7 +54,7 @@ export async function createTestAction(
     }
 
     return { success: true, testId: test.id }
-  } catch (err: any) {
-    return { error: err.message }
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }

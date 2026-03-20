@@ -15,24 +15,24 @@ export default async function ResultsPage({
   const { data: session, error: sessionErr } = await supabase
     .from('test_sessions')
     .select(`
-      id, score, passed, completed_at, test_id,
+      id, score, finished_at, test_id,
       tests ( title )
     `)
     .eq('id', sessionId)
     .single()
 
-  if (sessionErr || !session || !session.completed_at) {
-    notFound() // If incomplete or not found
+  if (sessionErr || !session || !session.finished_at) {
+    notFound()
   }
 
   // Fetch answers to show breakdown
   const { data: sessionAnswers, error: saErr } = await supabase
     .from('session_answers')
     .select(`
-      selected_options,
+      selected_option_ids,
       questions (
-        id, text, type,
-        options ( label, text, is_correct )
+        id, question_text, type,
+        options ( label, option_text, is_correct )
       )
     `)
     .eq('session_id', sessionId)
@@ -41,11 +41,18 @@ export default async function ResultsPage({
     return <div>Error loading result details.</div>
   }
 
+  type ResultOption = { label: string; option_text: string; is_correct: boolean }
+  type ResultQuestion = { id: string; question_text: string; type: string; options: ResultOption[] }
+
+  // Compute pass/fail from score (70% threshold)
+  const totalQuestions = sessionAnswers.length
+  const passed = totalQuestions > 0 && (session.score ?? 0) / totalQuestions >= 0.7
+
   // Helper to determine if an answer is fully correct
-  const getIsCorrect = (selected: string[], options: any[]) => {
+  const getIsCorrect = (selected: string[], options: ResultOption[]) => {
     const correctOptions = options.filter(o => o.is_correct).map(o => o.label)
-    return selected.length === correctOptions.length && 
-           selected.every(l => correctOptions.includes(l)) && 
+    return selected.length === correctOptions.length &&
+           selected.every(l => correctOptions.includes(l)) &&
            correctOptions.every(l => selected.includes(l))
   }
 
@@ -53,15 +60,15 @@ export default async function ResultsPage({
     <div className="mx-auto max-w-4xl space-y-8">
       <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-3xl font-extrabold text-gray-900">
-          {(session.tests as any)?.title} - Results
+          {(session.tests as unknown as { title: string } | null)?.title} - Results
         </h1>
         <div className="mt-6 flex flex-col items-center justify-center space-y-4">
           <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gray-50 border-4 border-indigo-100 shadow-inner text-4xl font-black text-indigo-600">
-            {session.score} / {sessionAnswers.length}
+            {session.score} / {totalQuestions}
           </div>
-          
+
           <div className="mt-4 flex items-center gap-2">
-            {session.passed ? (
+            {passed ? (
               <span className="inline-flex items-center rounded-full bg-green-100 px-4 py-1.5 text-lg font-bold text-green-800">
                 <svg className="mr-1.5 h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -82,17 +89,18 @@ export default async function ResultsPage({
 
       <div className="space-y-6 rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Detailed Breakdown</h2>
-        
+
         <div className="space-y-8">
-          {sessionAnswers.map((ans: any, idx) => {
-            const isFullyCorrect = getIsCorrect(ans.selected_options || [], ans.questions.options)
-            
+          {sessionAnswers.map((ans, idx) => {
+            const questions = ans.questions as unknown as ResultQuestion
+            const isFullyCorrect = getIsCorrect(ans.selected_option_ids || [], questions.options)
+
             return (
-              <div key={ans.questions.id} className="rounded-lg border bg-gray-50 p-6 shadow-sm">
+              <div key={questions.id} className="rounded-lg border bg-gray-50 p-6 shadow-sm">
                 <div className="flex items-start justify-between">
                   <h3 className="text-lg font-medium text-gray-900 w-10/12">
                     <span className="mr-2 text-indigo-600 font-bold">{idx + 1}.</span>
-                    {ans.questions.text}
+                    {questions.question_text}
                   </h3>
                   <div className="w-2/12 flex justify-end">
                      {isFullyCorrect ? (
@@ -108,12 +116,12 @@ export default async function ResultsPage({
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  {ans.questions.options.map((opt: any) => {
-                    const isSelected = (ans.selected_options || []).includes(opt.label)
+                  {questions.options.map((opt) => {
+                    const isSelected = (ans.selected_option_ids || []).includes(opt.label)
                     const isCorrectAnswer = opt.is_correct
-                    
-                    let bgClass = "bg-white border-gray-200 text-gray-700" // neutral
-                    
+
+                    let bgClass = "bg-white border-gray-200 text-gray-700"
+
                     if (isSelected && isCorrectAnswer) {
                       bgClass = "bg-green-50 border-green-300 text-green-800 shadow-sm"
                     } else if (isSelected && !isCorrectAnswer) {
@@ -126,7 +134,7 @@ export default async function ResultsPage({
                       <div key={opt.label} className={`flex items-center justify-between rounded-md border p-3 ${bgClass}`}>
                          <div className="flex items-center">
                             <span className="font-bold mr-3">{opt.label}.</span>
-                            <span>{opt.text}</span>
+                            <span>{opt.option_text}</span>
                          </div>
                          <div className="flex gap-2">
                             {isSelected && <span className="text-xs font-semibold px-2 py-1 bg-white/60 rounded">Your Answer</span>}
@@ -140,7 +148,7 @@ export default async function ResultsPage({
             )
           })}
         </div>
-        
+
         <div className="mt-10 flex justify-center pb-4 border-t pt-8">
           <Link
             href="/dashboard"

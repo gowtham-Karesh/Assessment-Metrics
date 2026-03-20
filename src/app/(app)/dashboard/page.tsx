@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   // Fetch all tests along with author profile
   const { data: myTests } = await supabase
     .from('tests')
-    .select('id, title, time_limit, created_at')
+    .select('id, title, time_limit_minutes, created_at')
     .eq('created_by', user.id)
     .order('created_at', { ascending: false })
 
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
     .select(`
       id, 
       title, 
-      time_limit, 
+      time_limit_minutes, 
       created_at,
       profiles ( email )
     `)
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
             {myTests.map((test) => (
               <div key={test.id} className="rounded-lg border bg-white p-6 shadow-sm">
                 <h3 className="text-lg font-medium text-gray-900">{test.title}</h3>
-                <p className="mt-2 text-sm text-gray-500">{test.time_limit} min limit</p>
+                <p className="mt-2 text-sm text-gray-500">{test.time_limit_minutes} min limit</p>
                 <div className="mt-4">
                   <Link
                     href={`/tests/${test.id}`}
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
                 <p className="mt-1 text-sm text-gray-500">
                   By: {(test.profiles as unknown as { email: string })?.email || 'Unknown'}
                 </p>
-                <p className="mt-2 text-sm text-gray-500">{test.time_limit} min limit</p>
+                <p className="mt-2 text-sm text-gray-500">{test.time_limit_minutes} min limit</p>
                 <div className="mt-4">
                   <Link
                     href={`/tests/${test.id}`}

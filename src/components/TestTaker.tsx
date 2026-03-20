@@ -60,17 +60,20 @@ export default function TestTaker({
       const elapsed = now - sessionStart
       const remaining = Math.max(0, limitMs - elapsed)
       setTimeLeft(remaining)
-
-      if (remaining === 0 && !isSubmitting) {
-        handleSubmit()
-      }
     }
 
     updateTimer()
     const int = setInterval(updateTimer, 1000)
     return () => clearInterval(int)
+  }, [startedAt, timeLimit])
+
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (timeLeft === 0 && !isSubmitting) {
+      handleSubmit()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startedAt, timeLimit, isSubmitting])
+  }, [timeLeft])
 
   const formatTime = (ms: number) => {
     const totalSec = Math.floor(ms / 1000)

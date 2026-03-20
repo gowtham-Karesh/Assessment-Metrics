@@ -29,7 +29,11 @@ export default function TestTaker({
 }) {
   const router = useRouter()
   const [answers, setAnswers] = useState<Record<string, string[]>>(initialAnswers)
-  const [timeLeft, setTimeLeft] = useState<number>(0)
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    const sessionStart = new Date(startedAt).getTime()
+    const limitMs = timeLimit * 60 * 1000
+    return Math.max(0, limitMs - (Date.now() - sessionStart))
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e?: React.FormEvent) => {

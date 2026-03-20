@@ -38,30 +38,56 @@ export default function CreateTestPage() {
   }
 
   const parseRow = (row: any): ParsedQuestion | null => {
-    if (!row['Question'] || !row['Option A'] || !row['Option B'] || !row['Answer'] || !row['Type']) {
+    // Normalize keys to allow for slight variations
+    const normalizeKey = (key: string) => key.toLowerCase().replace(/[\s_]+/g, '')
+    const normalizedRow: any = {}
+    for (const key in row) {
+      if (row.hasOwnProperty(key)) {
+        normalizedRow[normalizeKey(key)] = row[key]
+      }
+    }
+
+    const question = normalizedRow['question'] || normalizedRow['questions']
+    const optionA = normalizedRow['optiona'] || normalizedRow['option1']
+    const optionB = normalizedRow['optionb'] || normalizedRow['option2']
+    const optionC = normalizedRow['optionc'] || normalizedRow['option3']
+    const optionD = normalizedRow['optiond'] || normalizedRow['option4']
+    const answer = normalizedRow['answer'] || normalizedRow['correctanswer']
+    
+    if (!question || !optionA || !optionB || !answer) {
       return null
     }
 
-    const type = row['Type'].toString().trim().toLowerCase() === 'checkbox' ? 'checkbox' : 'radio'
+    let typeStr = String(normalizedRow['type'] || normalizedRow['ismultioption'] || 'radio').trim().toLowerCase()
+    if (typeStr === 'y' || typeStr === 'yes') typeStr = 'checkbox' // Map 'Y' to checkbox
+    const questionType = typeStr === 'checkbox' ? 'checkbox' : 'radio'
     
-    // e.g. "A,C" -> ['A', 'C']
-    const correctAnswers = row['Answer'].toString().toUpperCase().split(',').map((s: string) => s.trim())
+    // Handle answers: parse commas or semicolons, map "1" -> "A", "2" -> "B", etc.
+    let answerStr = String(answer).replace(/;/g, ',')
+    const correctAnswers = answerStr.toUpperCase().split(',').map((s: string) => {
+      const v = s.trim()
+      if (v === '1') return 'A'
+      if (v === '2') return 'B'
+      if (v === '3') return 'C'
+      if (v === '4') return 'D'
+      return v
+    })
 
     const options = [
-      { label: 'A', text: String(row['Option A']), isCorrect: correctAnswers.includes('A') },
-      { label: 'B', text: String(row['Option B']), isCorrect: correctAnswers.includes('B') }
+      { label: 'A', text: String(optionA), isCorrect: correctAnswers.includes('A') },
+      { label: 'B', text: String(optionB), isCorrect: correctAnswers.includes('B') }
     ]
 
-    if (row['Option C']) {
-      options.push({ label: 'C', text: String(row['Option C']), isCorrect: correctAnswers.includes('C') })
+    if (optionC && String(optionC).trim()) {
+      options.push({ label: 'C', text: String(optionC), isCorrect: correctAnswers.includes('C') })
     }
-    if (row['Option D']) {
-      options.push({ label: 'D', text: String(row['Option D']), isCorrect: correctAnswers.includes('D') })
+    if (optionD && String(optionD).trim()) {
+      options.push({ label: 'D', text: String(optionD), isCorrect: correctAnswers.includes('D') })
     }
 
     return {
-      text: String(row['Question']),
-      type: type as 'radio' | 'checkbox',
+      text: String(question),
+      type: questionType as 'radio' | 'checkbox',
       options
     }
   }
@@ -70,12 +96,18 @@ export default function CreateTestPage() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (header) => header.trim(),
       complete: (results) => {
         const parsedData: ParsedQuestion[] = []
         results.data.forEach((row: any) => {
           const q = parseRow(row)
           if (q) parsedData.push(q)
         })
+        if (parsedData.length === 0) {
+          setErrorMsg('No valid questions found. Ensure columns include Question, Option A, Option B, and Answer.')
+        } else {
+          setErrorMsg('')
+        }
         setPreview(parsedData)
       },
       error: () => setErrorMsg('Failed to parse CSV')
@@ -83,18 +115,27 @@ export default function CreateTestPage() {
   }
 
   const parseExcel = async (file: File) => {
-    const data = await file.arrayBuffer()
-    const workbook = XLSX.read(data, { type: 'array' })
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
-    const json = XLSX.utils.sheet_to_json(worksheet)
-    
-    const parsedData: ParsedQuestion[] = []
-    json.forEach((row: any) => {
-      const q = parseRow(row)
-      if (q) parsedData.push(q)
-    })
-    setPreview(parsedData)
+    try {
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const json = XLSX.utils.sheet_to_json(worksheet)
+      
+      const parsedData: ParsedQuestion[] = []
+      json.forEach((row: any) => {
+        const q = parseRow(row)
+        if (q) parsedData.push(q)
+      })
+      if (parsedData.length === 0) {
+        setErrorMsg('No valid questions found. Ensure columns include Question, Option A, Option B, and Answer.')
+      } else {
+        setErrorMsg('')
+      }
+      setPreview(parsedData)
+    } catch (e) {
+      setErrorMsg('Failed to parse Excel file')
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
